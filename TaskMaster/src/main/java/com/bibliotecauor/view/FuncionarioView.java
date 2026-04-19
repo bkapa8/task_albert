@@ -272,8 +272,11 @@ public class FuncionarioView extends BorderPane {
         tituloField.setPromptText("Título");
         TextField autorField = new TextField();
         autorField.setPromptText("Autor");
-        TextField categoriaField = new TextField();
-        categoriaField.setPromptText("Categoria");
+        CategoriaDAO categoriaDAO = new CategoriaDAO();
+        ComboBox<String> categoriaCombo = new ComboBox<>();
+        List<String> categorias = categoriaDAO.getTodasCategorias();
+        categoriaCombo.setItems(FXCollections.observableArrayList(categorias));
+        categoriaCombo.setPromptText("Selecione categoria");
         TextField quantidadeField = new TextField();
         quantidadeField.setPromptText("Quantidade");
         CheckBox disponivelCheck = new CheckBox("Disponível");
@@ -282,7 +285,7 @@ public class FuncionarioView extends BorderPane {
             isbnField.setText(livro.getIsbn());
             tituloField.setText(livro.getTitulo());
             autorField.setText(livro.getAutor());
-            categoriaField.setText(livro.getCategoria());
+            categoriaCombo.setValue(livro.getCategoria());
             quantidadeField.setText(String.valueOf(livro.getQuantidade()));
             disponivelCheck.setSelected(livro.isDisponivel());
         }
@@ -294,7 +297,7 @@ public class FuncionarioView extends BorderPane {
         grid.add(new Label("Autor:"), 0, 2);
         grid.add(autorField, 1, 2);
         grid.add(new Label("Categoria:"), 0, 3);
-        grid.add(categoriaField, 1, 3);
+        grid.add(categoriaCombo, 1, 3);
         grid.add(new Label("Quantidade:"), 0, 4);
         grid.add(quantidadeField, 1, 4);
         grid.add(disponivelCheck, 1, 5);
@@ -304,11 +307,18 @@ public class FuncionarioView extends BorderPane {
         
         dialog.showAndWait().ifPresent(result -> {
             try {
+                if (isbnField.getText().isEmpty() || tituloField.getText().isEmpty() || 
+                    autorField.getText().isEmpty() || categoriaCombo.getValue() == null || 
+                    quantidadeField.getText().isEmpty()) {
+                    showAlert(Alert.AlertType.WARNING, "Todos os campos devem ser preenchidos!");
+                    return;
+                }
+                
                 Livro novoLivro = new Livro();
                 novoLivro.setIsbn(isbnField.getText());
                 novoLivro.setTitulo(tituloField.getText());
                 novoLivro.setAutor(autorField.getText());
-                novoLivro.setCategoria(categoriaField.getText());
+                novoLivro.setCategoria(categoriaCombo.getValue());
                 novoLivro.setQuantidade(Integer.parseInt(quantidadeField.getText()));
                 novoLivro.setDisponivel(disponivelCheck.isSelected());
                 
@@ -317,11 +327,15 @@ public class FuncionarioView extends BorderPane {
                     if (livroDAO.editarLivro(novoLivro)) {
                         showAlert(Alert.AlertType.INFORMATION, "Livro editado com sucesso!");
                         atualizarLivros();
+                    } else {
+                        showAlert(Alert.AlertType.ERROR, "Erro ao editar livro!");
                     }
                 } else {
                     if (livroDAO.adicionarLivro(novoLivro)) {
                         showAlert(Alert.AlertType.INFORMATION, "Livro adicionado com sucesso!");
                         atualizarLivros();
+                    } else {
+                        showAlert(Alert.AlertType.ERROR, "Erro ao adicionar livro! ISBN já existe?");
                     }
                 }
             } catch (Exception e) {
