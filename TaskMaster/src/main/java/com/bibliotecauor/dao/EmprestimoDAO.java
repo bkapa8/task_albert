@@ -2,6 +2,7 @@ package com.bibliotecauor.dao;
 
 import com.bibliotecauor.model.*;
 import java.sql.*;
+// Usar java.sql.Date explicitamente para evitar ambiguidade
 import java.time.LocalDate;
 import java.util.*;
 
@@ -73,8 +74,8 @@ public class EmprestimoDAO {
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, e.getUsuarioId());
             ps.setInt(2, e.getLivroId());
-            ps.setDate(3, Date.valueOf(e.getDataEmprestimo()));
-            ps.setDate(4, Date.valueOf(e.getDataDevolucaoPrevista()));
+            ps.setDate(3, java.sql.Date.valueOf(e.getDataEmprestimo()));
+            ps.setDate(4, java.sql.Date.valueOf(e.getDataDevolucaoPrevista()));
             ps.setString(5, e.getStatus());
             ps.setInt(6, e.getPrioridade());
             int affected = ps.executeUpdate();
