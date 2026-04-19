@@ -180,29 +180,34 @@ public class EmprestimoDAO {
         return false;
     }
 
-    public PriorityQueue<Emprestimo> getFilaEspera() {
-        PriorityQueue<Emprestimo> fila = new PriorityQueue<>();
-        String sql = "SELECT * FROM emprestimos WHERE status = 'RESERVADO' ORDER BY prioridade, data_devolucao_prevista";
+    public List<Emprestimo> getEmprestimosPendentes() {
+        List<Emprestimo> emprestimos = new ArrayList<>();
+        String sql = "SELECT * FROM emprestimos WHERE status IN ('pendente', 'reservado') ORDER BY prioridade DESC, data_emprestimo ASC";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                Emprestimo e = new Emprestimo(
-                    rs.getInt("id"),
-                    rs.getInt("usuario_id"),
-                    rs.getInt("livro_id"),
-                    rs.getDate("data_emprestimo").toLocalDate(),
-                    rs.getDate("data_devolucao_prevista").toLocalDate(),
-                    rs.getDate("data_devolucao_real") != null ? rs.getDate("data_devolucao_real").toLocalDate() : null,
-                    rs.getString("status"),
-                    rs.getInt("prioridade")
-                );
-                fila.add(e);
+                emprestimos.add(mapResultSetToEmprestimo(rs));
             }
         } catch (SQLException ex) {
             ex.printStackTrace();
         }
-        return fila;
+        return emprestimos;
+    }
+
+    public List<Emprestimo> getEmprestimosAtivos() {
+        List<Emprestimo> emprestimos = new ArrayList<>();
+        String sql = "SELECT * FROM emprestimos WHERE status = 'ativo' ORDER BY data_devolucao_prevista ASC";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                emprestimos.add(mapResultSetToEmprestimo(rs));
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return emprestimos;
     }
 
     public LinkedList<Emprestimo> getHistoricoEmprestimos(int usuarioId) {
@@ -213,23 +218,26 @@ public class EmprestimoDAO {
             ps.setInt(1, usuarioId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Emprestimo e = new Emprestimo(
-                        rs.getInt("id"),
-                        rs.getInt("usuario_id"),
-                        rs.getInt("livro_id"),
-                        rs.getDate("data_emprestimo").toLocalDate(),
-                        rs.getDate("data_devolucao_prevista").toLocalDate(),
-                        rs.getDate("data_devolucao_real") != null ? rs.getDate("data_devolucao_real").toLocalDate() : null,
-                        rs.getString("status"),
-                        rs.getInt("prioridade")
-                    );
-                    historico.add(e);
+                    historico.add(mapResultSetToEmprestimo(rs));
                 }
             }
         } catch (SQLException ex) {
             ex.printStackTrace();
         }
         return historico;
+    }
+
+    private Emprestimo mapResultSetToEmprestimo(ResultSet rs) throws SQLException {
+        return new Emprestimo(
+            rs.getInt("id"),
+            rs.getInt("usuario_id"),
+            rs.getInt("livro_id"),
+            rs.getDate("data_emprestimo").toLocalDate(),
+            rs.getDate("data_devolucao_prevista").toLocalDate(),
+            rs.getDate("data_devolucao_real") != null ? rs.getDate("data_devolucao_real").toLocalDate() : null,
+            rs.getString("status"),
+            rs.getInt("prioridade")
+        );
     }
 
     public HashMap<String, Livro> getLivrosPorISBN() {
