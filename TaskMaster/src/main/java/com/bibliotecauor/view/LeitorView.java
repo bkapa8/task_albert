@@ -1,228 +1,309 @@
 package com.bibliotecauor.view;
 
 import com.bibliotecauor.dao.EmprestimoDAO;
+import com.bibliotecauor.dao.LivroDAO;
+import com.bibliotecauor.dao.CategoriaDAO;
 import com.bibliotecauor.model.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.PriorityQueue;
 
 public class LeitorView extends BorderPane {
-    private EmprestimoDAO dao = new EmprestimoDAO();
+    private EmprestimoDAO emprestimoDAO = new EmprestimoDAO();
+    private LivroDAO livroDAO = new LivroDAO();
+    private CategoriaDAO categoriaDAO = new CategoriaDAO();
     private Usuario usuario;
-    private TableView<Livro> livrosTable;
+    private Stage stage;
+    
+    private TableView<Livro> catalogoTable;
     private TableView<Emprestimo> emprestimosTable;
-    private TableView<Emprestimo> filaTable;
-    private ComboBox<Livro> livrosCombo;
+    private ComboBox<String> categoriaCombo;
+    private TextField pesquisaField;
     private DatePicker dataDevolucaoPicker;
-    private TextField motivoField;
-    private Button emprestarBtn, devolverBtn, reservarBtn, undoBtn, limparBtn;
-    private ComboBox<String> relatorioCombo;
-    private Button gerarRelatorioBtn;
-    private TextArea relatorioArea;
+    private Button pesquisarBtn, emprestarBtn, devolverBtn, reservarBtn, limparBtn, sairBtn;
+    private Label usuarioLabel;
 
     public LeitorView(Stage stage, Usuario usuario) {
+        this.stage = stage;
         this.usuario = usuario;
         setPadding(new Insets(10));
-        // Topo
-        HBox topo = new HBox(10);
-        topo.setAlignment(Pos.CENTER_LEFT);
-        livrosCombo = new ComboBox<>();
-        livrosCombo.setPromptText("Selecione um livro");
-        livrosCombo.setMinWidth(200);
-        dataDevolucaoPicker = new DatePicker();
-        dataDevolucaoPicker.setPromptText("Data Devolução");
-        motivoField = new TextField();
-        motivoField.setPromptText("Motivo");
-        motivoField.setMinWidth(120);
-        emprestarBtn = new Button("Emprestar");
-        devolverBtn = new Button("Devolver");
-        reservarBtn = new Button("Reservar");
-        undoBtn = new Button("Undo Última Ação");
-        limparBtn = new Button("Limpar");
-        topo.getChildren().addAll(livrosCombo, dataDevolucaoPicker, motivoField, emprestarBtn, devolverBtn, reservarBtn, undoBtn, limparBtn);
-        setTop(topo);
-        // Tabs
+        
+        // TOPO: Info do usuário e logout
+        HBox topoInfo = new HBox(10);
+        topoInfo.setAlignment(Pos.CENTER_LEFT);
+        usuarioLabel = new Label("Bem-vindo, " + usuario.getNomeCompleto());
+        usuarioLabel.setStyle("-fx-font-size: 14; -fx-font-weight: bold;");
+        sairBtn = new Button("Sair");
+        sairBtn.setStyle("-fx-font-size: 12;");
+        sairBtn.setOnAction(e -> handleSair());
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        topoInfo.getChildren().addAll(usuarioLabel, spacer, sairBtn);
+        
+        // LINHA DE BUSCA E FILTROS
+        HBox buscaBox = new HBox(10);
+        buscaBox.setAlignment(Pos.CENTER_LEFT);
+        buscaBox.setPadding(new Insets(10));
+        buscaBox.setStyle("-fx-border-color: #ddd; -fx-border-radius: 5;");
+        
+        Label categLabel = new Label("Categoria:");
+        categoriaCombo = new ComboBox<>();
+        carregarCategorias();
+        categoriaCombo.setOnAction(e -> atualizarCatalogo());
+        
+        Label pesqLabel = new Label("Pesquisa:");
+        pesquisaField = new TextField();
+        pesquisaField.setPromptText("Título ou Autor");
+        pesquisaField.setPrefWidth(250);
+        pesquisarBtn = new Button("Pesquisar");
+        pesquisarBtn.setOnAction(e -> handlePesquisa());
+        
+        buscaBox.getChildren().addAll(categLabel, categoriaCombo, new Separator(Separator.VERTICAL), 
+                                       pesqLabel, pesquisaField, pesquisarBtn);
+        
+        VBox topoCompleto = new VBox(10, topoInfo, buscaBox);
+        setTop(topoCompleto);
+        
+        // CENTRO: Tabs com Catálogo e Empréstimos
         TabPane tabPane = new TabPane();
-        // Tab 1: Livros Disponíveis
-        Tab tab1 = new Tab("Livros Disponíveis");
-        livrosTable = new TableView<>();
-        livrosTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        
+        // TAB 1: CATÁLOGO
+        Tab tabCatalogo = new Tab("Catálogo");
+        VBox catalogoBox = new VBox(10);
+        catalogoBox.setPadding(new Insets(10));
+        
+        catalogoTable = new TableView<>();
+        catalogoTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        
         TableColumn<Livro, Integer> colId = new TableColumn<>("ID");
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
-        TableColumn<Livro, String> colIsbn = new TableColumn<>("ISBN");
-        colIsbn.setCellValueFactory(new PropertyValueFactory<>("isbn"));
+        colId.setPrefWidth(50);
+        
         TableColumn<Livro, String> colTitulo = new TableColumn<>("Título");
         colTitulo.setCellValueFactory(new PropertyValueFactory<>("titulo"));
-        TableColumn<Livro, String> colAutor = new TableColumn<>("autor");
+        colTitulo.setPrefWidth(250);
+        
+        TableColumn<Livro, String> colAutor = new TableColumn<>("Autor");
         colAutor.setCellValueFactory(new PropertyValueFactory<>("autor"));
+        colAutor.setPrefWidth(150);
+        
+        TableColumn<Livro, String> colCategoria = new TableColumn<>("Categoria");
+        colCategoria.setCellValueFactory(new PropertyValueFactory<>("categoria"));
+        colCategoria.setPrefWidth(120);
+        
+        TableColumn<Livro, String> colISBN = new TableColumn<>("ISBN");
+        colISBN.setCellValueFactory(new PropertyValueFactory<>("isbn"));
+        colISBN.setPrefWidth(120);
+        
         TableColumn<Livro, Boolean> colDisp = new TableColumn<>("Disponível");
         colDisp.setCellValueFactory(new PropertyValueFactory<>("disponivel"));
-        livrosTable.getColumns().addAll(colId, colIsbn, colTitulo, colAutor, colDisp);
-        tab1.setContent(livrosTable);
-        // Tab 2: Meus Empréstimos
-        Tab tab2 = new Tab("Meus Empréstimos");
+        colDisp.setPrefWidth(100);
+        
+        catalogoTable.getColumns().addAll(colId, colTitulo, colAutor, colCategoria, colISBN, colDisp);
+        
+        HBox acoesCatalogo = new HBox(10);
+        acoesCatalogo.setAlignment(Pos.CENTER_LEFT);
+        Label dataLabel = new Label("Data de Devolução:");
+        dataDevolucaoPicker = new DatePicker();
+        dataDevolucaoPicker.setValue(LocalDate.now().plusDays(14)); // 14 dias por padrão
+        
+        emprestarBtn = new Button("Emprestar");
+        emprestarBtn.setStyle("-fx-font-size: 12; -fx-padding: 8;");
+        emprestarBtn.setOnAction(e -> handleEmprestar());
+        
+        reservarBtn = new Button("Reservar");
+        reservarBtn.setStyle("-fx-font-size: 12; -fx-padding: 8;");
+        reservarBtn.setOnAction(e -> handleReservar());
+        
+        limparBtn = new Button("Limpar Seleção");
+        limparBtn.setStyle("-fx-font-size: 12; -fx-padding: 8;");
+        limparBtn.setOnAction(e -> catalogoTable.getSelectionModel().clearSelection());
+        
+        acoesCatalogo.getChildren().addAll(dataLabel, dataDevolucaoPicker, emprestarBtn, reservarBtn, limparBtn);
+        
+        catalogoBox.getChildren().addAll(catalogoTable, acoesCatalogo);
+        tabCatalogo.setContent(catalogoBox);
+        
+        // TAB 2: MEUS EMPRÉSTIMOS
+        Tab tabEmprestimos = new Tab("Meus Empréstimos");
+        VBox emprestimosBox = new VBox(10);
+        emprestimosBox.setPadding(new Insets(10));
+        
         emprestimosTable = new TableView<>();
         emprestimosTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        
         TableColumn<Emprestimo, Integer> colEId = new TableColumn<>("ID");
         colEId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        
         TableColumn<Emprestimo, Integer> colLivroId = new TableColumn<>("LivroID");
         colLivroId.setCellValueFactory(new PropertyValueFactory<>("livroId"));
+        
         TableColumn<Emprestimo, String> colStatus = new TableColumn<>("Status");
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
-        TableColumn<Emprestimo, LocalDate> colDevPrev = new TableColumn<>("Devolução Prevista");
-        colDevPrev.setCellValueFactory(new PropertyValueFactory<>("dataDevolucaoPrevista"));
-        TableColumn<Emprestimo, LocalDate> colDevReal = new TableColumn<>("Devolução Real");
-        colDevReal.setCellValueFactory(new PropertyValueFactory<>("dataDevolucaoReal"));
-        emprestimosTable.getColumns().addAll(colEId, colLivroId, colStatus, colDevPrev, colDevReal);
-        tab2.setContent(emprestimosTable);
-        // Tab 3: Fila de Espera
-        Tab tab3 = new Tab("Fila de Espera");
-        filaTable = new TableView<>();
-        filaTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        TableColumn<Emprestimo, Integer> colFId = new TableColumn<>("ID");
-        colFId.setCellValueFactory(new PropertyValueFactory<>("id"));
-        TableColumn<Emprestimo, Integer> colFUser = new TableColumn<>("UsuárioID");
-        colFUser.setCellValueFactory(new PropertyValueFactory<>("usuarioId"));
-        TableColumn<Emprestimo, Integer> colFLivro = new TableColumn<>("LivroID");
-        colFLivro.setCellValueFactory(new PropertyValueFactory<>("livroId"));
-        TableColumn<Emprestimo, Integer> colFPrioridade = new TableColumn<>("Prioridade");
-        colFPrioridade.setCellValueFactory(new PropertyValueFactory<>("prioridade"));
-        TableColumn<Emprestimo, LocalDate> colFDevPrev = new TableColumn<>("Devolução Prevista");
-        colFDevPrev.setCellValueFactory(new PropertyValueFactory<>("dataDevolucaoPrevista"));
-        filaTable.getColumns().addAll(colFId, colFUser, colFLivro, colFPrioridade, colFDevPrev);
-        tab3.setContent(filaTable);
-        // Tab 4: Relatórios
-        Tab tab4 = new Tab("Relatórios");
-        VBox relatorioBox = new VBox(10);
-        relatorioBox.setPadding(new Insets(10));
-        relatorioCombo = new ComboBox<>();
-        relatorioCombo.getItems().addAll("Livros", "Empréstimos", "Fila de Espera");
-        relatorioCombo.setPromptText("Categoria");
-        gerarRelatorioBtn = new Button("Gerar");
-        relatorioArea = new TextArea();
-        relatorioArea.setEditable(false);
-        relatorioArea.setPrefHeight(200);
-        relatorioBox.getChildren().addAll(relatorioCombo, gerarRelatorioBtn, relatorioArea);
-        tab4.setContent(relatorioBox);
-        tabPane.getTabs().addAll(tab1, tab2, tab3, tab4);
-        setCenter(tabPane);
-        // Handlers
-        emprestarBtn.setOnAction(e -> handleEmprestar());
+        
+        TableColumn<Emprestimo, LocalDate> colDataEmp = new TableColumn<>("Data Empréstimo");
+        colDataEmp.setCellValueFactory(new PropertyValueFactory<>("dataEmprestimo"));
+        
+        TableColumn<Emprestimo, LocalDate> colDataDev = new TableColumn<>("Data Devolução Prevista");
+        colDataDev.setCellValueFactory(new PropertyValueFactory<>("dataDevolucaoPrevista"));
+        
+        TableColumn<Emprestimo, LocalDate> colDataDevReal = new TableColumn<>("Data Devolução Real");
+        colDataDevReal.setCellValueFactory(new PropertyValueFactory<>("dataDevolucaoReal"));
+        
+        emprestimosTable.getColumns().addAll(colEId, colLivroId, colStatus, colDataEmp, colDataDev, colDataDevReal);
+        
+        HBox acoesEmprestimos = new HBox(10);
+        acoesEmprestimos.setAlignment(Pos.CENTER_LEFT);
+        
+        devolverBtn = new Button("Devolver Livro");
+        devolverBtn.setStyle("-fx-font-size: 12; -fx-padding: 8;");
         devolverBtn.setOnAction(e -> handleDevolver());
-        reservarBtn.setOnAction(e -> handleReservar());
-        undoBtn.setOnAction(e -> handleUndo());
-        limparBtn.setOnAction(e -> limparCampos());
-        gerarRelatorioBtn.setOnAction(e -> gerarRelatorio());
+        
+        acoesEmprestimos.getChildren().addAll(devolverBtn);
+        
+        emprestimosBox.getChildren().addAll(emprestimosTable, acoesEmprestimos);
+        tabEmprestimos.setContent(emprestimosBox);
+        
+        tabPane.getTabs().addAll(tabCatalogo, tabEmprestimos);
+        setCenter(tabPane);
+        
         // Inicialização
-        atualizarLivros();
+        atualizarCatalogo();
         atualizarEmprestimos();
-        atualizarFila();
     }
 
-    private void atualizarLivros() {
-        List<Livro> livros = dao.getLivrosDisponiveis();
-        ObservableList<Livro> obs = FXCollections.observableArrayList(livros);
-        livrosTable.setItems(obs);
-        livrosCombo.setItems(obs);
+    private void carregarCategorias() {
+        List<String> categorias = categoriaDAO.getTodasCategorias();
+        ObservableList<String> obs = FXCollections.observableArrayList(categorias);
+        categoriaCombo.setItems(obs);
+        if (!categorias.isEmpty()) {
+            categoriaCombo.getSelectionModel().selectFirst();
+        }
     }
+
+    private void atualizarCatalogo() {
+        String categoriaSelecionada = categoriaCombo.getValue();
+        if (categoriaSelecionada == null) {
+            catalogoTable.setItems(FXCollections.observableArrayList());
+            return;
+        }
+        
+        List<Livro> livros = livroDAO.getLivrosPorCategoria(categoriaSelecionada);
+        ObservableList<Livro> obs = FXCollections.observableArrayList(livros);
+        catalogoTable.setItems(obs);
+    }
+
+    private void handlePesquisa() {
+        String termo = pesquisaField.getText().trim();
+        if (termo.isEmpty()) {
+            atualizarCatalogo();
+            return;
+        }
+        
+        List<Livro> livros = livroDAO.pesquisarLivro(termo);
+        ObservableList<Livro> obs = FXCollections.observableArrayList(livros);
+        catalogoTable.setItems(obs);
+    }
+
     private void atualizarEmprestimos() {
-        List<Emprestimo> hist = dao.getHistoricoEmprestimos(usuario.getId());
-        ObservableList<Emprestimo> obs = FXCollections.observableArrayList(hist);
+        List<Emprestimo> emprestimos = emprestimoDAO.getHistoricoEmprestimos(usuario.getId());
+        ObservableList<Emprestimo> obs = FXCollections.observableArrayList(emprestimos);
         emprestimosTable.setItems(obs);
     }
-    private void atualizarFila() {
-        PriorityQueue<Emprestimo> fila = dao.getFilaEspera();
-        ObservableList<Emprestimo> obs = FXCollections.observableArrayList(fila);
-        filaTable.setItems(obs);
-    }
-    private void limparCampos() {
-        livrosCombo.getSelectionModel().clearSelection();
-        dataDevolucaoPicker.setValue(null);
-        motivoField.clear();
-    }
+
     private void handleEmprestar() {
-        Livro livro = livrosCombo.getValue();
+        Livro livroSelecionado = catalogoTable.getSelectionModel().getSelectedItem();
         LocalDate dataDev = dataDevolucaoPicker.getValue();
-        if (livro == null || dataDev == null) {
-            showAlert(Alert.AlertType.WARNING, "Selecione livro e data de devolução.");
+        
+        if (livroSelecionado == null) {
+            showAlert(Alert.AlertType.WARNING, "Selecione um livro para emprestar.");
             return;
         }
-        Emprestimo e = new Emprestimo();
-        e.setUsuarioId(usuario.getId());
-        e.setLivroId(livro.getId());
-        e.setDataEmprestimo(LocalDate.now());
-        e.setDataDevolucaoPrevista(dataDev);
-        e.setStatus("EMPRESTADO");
-        e.setPrioridade(2);
-        if (dao.adicionarEmprestimo(e)) {
-            showAlert(Alert.AlertType.INFORMATION, "Empréstimo realizado!");
-            atualizarLivros(); atualizarEmprestimos();
-        } else {
-            showAlert(Alert.AlertType.ERROR, "Erro ao emprestar livro.");
-        }
-    }
-    private void handleDevolver() {
-        Emprestimo e = emprestimosTable.getSelectionModel().getSelectedItem();
-        if (e == null) {
-            showAlert(Alert.AlertType.WARNING, "Selecione um empréstimo para devolver.");
+        
+        if (!livroSelecionado.isDisponivel()) {
+            showAlert(Alert.AlertType.WARNING, "Este livro não está disponível no momento. Deseja reservar?");
             return;
         }
-        if (dao.devolverLivro(e.getId())) {
-            showAlert(Alert.AlertType.INFORMATION, "Livro devolvido!");
-            atualizarLivros(); atualizarEmprestimos();
+        
+        if (dataDev == null || dataDev.isBefore(LocalDate.now())) {
+            showAlert(Alert.AlertType.WARNING, "Selecione uma data de devolução válida.");
+            return;
+        }
+        
+        Emprestimo emprestimo = new Emprestimo();
+        emprestimo.setUsuarioId(usuario.getId());
+        emprestimo.setLivroId(livroSelecionado.getId());
+        emprestimo.setDataEmprestimo(LocalDate.now());
+        emprestimo.setDataDevolucaoPrevista(dataDev);
+        emprestimo.setStatus("PENDENTE");
+        emprestimo.setPrioridade(2);
+        
+        if (emprestimoDAO.adicionarEmprestimo(emprestimo)) {
+            showAlert(Alert.AlertType.INFORMATION, "Empréstimo solicitado com sucesso! Aguarde aprovação do funcionário.");
+            atualizarCatalogo();
+            atualizarEmprestimos();
+            dataDevolucaoPicker.setValue(LocalDate.now().plusDays(14));
         } else {
-            showAlert(Alert.AlertType.ERROR, "Erro ao devolver livro.");
+            showAlert(Alert.AlertType.ERROR, "Erro ao solicitar empréstimo.");
         }
     }
+
     private void handleReservar() {
-        Livro livro = livrosCombo.getValue();
-        if (livro == null) {
+        Livro livroSelecionado = catalogoTable.getSelectionModel().getSelectedItem();
+        
+        if (livroSelecionado == null) {
             showAlert(Alert.AlertType.WARNING, "Selecione um livro para reservar.");
             return;
         }
-        if (dao.reservarLivro(livro.getId(), usuario.getId())) {
-            showAlert(Alert.AlertType.INFORMATION, "Livro reservado!");
-            atualizarFila();
+        
+        if (emprestimoDAO.reservarLivro(livroSelecionado.getId(), usuario.getId())) {
+            showAlert(Alert.AlertType.INFORMATION, "Livro reservado com sucesso! Você será notificado quando estiver disponível.");
+            atualizarEmprestimos();
         } else {
             showAlert(Alert.AlertType.ERROR, "Erro ao reservar livro.");
         }
     }
-    private void handleUndo() {
-        if (dao.undoUltimaAcao()) {
-            showAlert(Alert.AlertType.INFORMATION, "Ação desfeita!");
-            atualizarLivros(); atualizarEmprestimos(); atualizarFila();
+
+    private void handleDevolver() {
+        Emprestimo emprestimoSelecionado = emprestimosTable.getSelectionModel().getSelectedItem();
+        
+        if (emprestimoSelecionado == null) {
+            showAlert(Alert.AlertType.WARNING, "Selecione um empréstimo para devolver.");
+            return;
+        }
+        
+        if ("DEVOLVIDO".equals(emprestimoSelecionado.getStatus())) {
+            showAlert(Alert.AlertType.WARNING, "Este livro já foi devolvido.");
+            return;
+        }
+        
+        if (emprestimoDAO.devolverLivro(emprestimoSelecionado.getId())) {
+            showAlert(Alert.AlertType.INFORMATION, "Livro devolvido com sucesso!");
+            atualizarCatalogo();
+            atualizarEmprestimos();
         } else {
-            showAlert(Alert.AlertType.WARNING, "Nada para desfazer.");
+            showAlert(Alert.AlertType.ERROR, "Erro ao devolver livro.");
         }
     }
-    private void gerarRelatorio() {
-        String cat = relatorioCombo.getValue();
-        if (cat == null) return;
-        StringBuilder sb = new StringBuilder();
-        if (cat.equals("Livros")) {
-            for (Livro l : dao.getLivrosDisponiveis()) {
-                sb.append(l.getTitulo()).append(" - ").append(l.getAutor()).append("\n");
-            }
-        } else if (cat.equals("Empréstimos")) {
-            for (Emprestimo e : dao.getHistoricoEmprestimos(usuario.getId())) {
-                sb.append("LivroID: ").append(e.getLivroId()).append(", Status: ").append(e.getStatus()).append("\n");
-            }
-        } else if (cat.equals("Fila de Espera")) {
-            for (Emprestimo e : dao.getFilaEspera()) {
-                sb.append("UsuárioID: ").append(e.getUsuarioId()).append(", LivroID: ").append(e.getLivroId()).append(", Prioridade: ").append(e.getPrioridade()).append("\n");
-            }
+
+    private void handleSair() {
+        Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmacao.setTitle("Confirmar Saída");
+        confirmacao.setHeaderText(null);
+        confirmacao.setContentText("Deseja sair?");
+        if (confirmacao.showAndWait().orElse(Alert.AlertType.CANCEL) == Alert.AlertType.OK) {
+            stage.close();
         }
-        relatorioArea.setText(sb.toString());
     }
+
     private void showAlert(Alert.AlertType type, String msg) {
         Alert alert = new Alert(type);
         alert.setTitle("Mensagem");
