@@ -41,9 +41,9 @@ public class LeitorView extends BorderPane {
         topoInfo.setAlignment(Pos.CENTER_LEFT);
         usuarioLabel = new Label("Bem-vindo, " + usuario.getNomeCompleto());
         usuarioLabel.setStyle("-fx-font-size: 14; -fx-font-weight: bold;");
-        sairBtn = new Button("Sair");
+        sairBtn = new Button("Terminar Sessão");
         sairBtn.setStyle("-fx-font-size: 12;");
-        sairBtn.setOnAction(e -> handleSair());
+        sairBtn.setOnAction(e -> handleTerminarSessao());
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         topoInfo.getChildren().addAll(usuarioLabel, spacer, sairBtn);
@@ -297,11 +297,11 @@ public class LeitorView extends BorderPane {
         }
     }
 
-    private void handleSair() {
+    private void handleTerminarSessao() {
         Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
         confirmacao.setTitle("Confirmar Saída");
         confirmacao.setHeaderText(null);
-        confirmacao.setContentText("Deseja sair?");
+        confirmacao.setContentText("Deseja terminar a sessão?");
         if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
             stage.close();
         }

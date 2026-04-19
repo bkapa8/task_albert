@@ -2,6 +2,7 @@ package com.bibliotecauor.view;
 
 import com.bibliotecauor.dao.EmprestimoDAO;
 import com.bibliotecauor.dao.LivroDAO;
+import com.bibliotecauor.dao.CategoriaDAO;
 import com.bibliotecauor.model.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -13,6 +14,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * FuncionarioView: tela para FUNCIONARIO
@@ -21,7 +23,7 @@ import java.util.List;
 public class FuncionarioView extends BorderPane {
     private EmprestimoDAO emprestimoDAO = new EmprestimoDAO();
     private LivroDAO livroDAO = new LivroDAO();
-    private Usuario usuario;
+    private CategoriaDAO categoriaDAO = new CategoriaDAO();
     private Stage stage;
     
     private TableView<Emprestimo> emprestimosTable;
@@ -31,7 +33,6 @@ public class FuncionarioView extends BorderPane {
 
     public FuncionarioView(Stage stage, Usuario usuario) {
         this.stage = stage;
-        this.usuario = usuario;
         setPadding(new Insets(10));
         
         // TOPO: Info do usuário e logout
@@ -39,9 +40,9 @@ public class FuncionarioView extends BorderPane {
         topoInfo.setAlignment(Pos.CENTER_LEFT);
         usuarioLabel = new Label("Funcionário: " + usuario.getNomeCompleto());
         usuarioLabel.setStyle("-fx-font-size: 14; -fx-font-weight: bold;");
-        sairBtn = new Button("Sair");
+        sairBtn = new Button("Terminar Sessão");
         sairBtn.setStyle("-fx-font-size: 12;");
-        sairBtn.setOnAction(e -> handleSair());
+        sairBtn.setOnAction(e -> handleTerminarSessao());
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         topoInfo.getChildren().addAll(usuarioLabel, spacer, sairBtn);
@@ -272,7 +273,6 @@ public class FuncionarioView extends BorderPane {
         tituloField.setPromptText("Título");
         TextField autorField = new TextField();
         autorField.setPromptText("Autor");
-        CategoriaDAO categoriaDAO = new CategoriaDAO();
         ComboBox<String> categoriaCombo = new ComboBox<>();
         List<String> categorias = categoriaDAO.getTodasCategorias();
         categoriaCombo.setItems(FXCollections.observableArrayList(categorias));
@@ -344,11 +344,11 @@ public class FuncionarioView extends BorderPane {
         });
     }
 
-    private void handleSair() {
+    private void handleTerminarSessao() {
         Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
         confirmacao.setTitle("Confirmar Saída");
         confirmacao.setHeaderText(null);
-        confirmacao.setContentText("Deseja sair?");
+        confirmacao.setContentText("Deseja terminar a sessão?");
         if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
             stage.close();
         }

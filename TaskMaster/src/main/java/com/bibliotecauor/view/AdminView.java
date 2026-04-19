@@ -20,18 +20,17 @@ public class AdminView extends BorderPane {
     private UsuarioDAO usuarioDAO = new UsuarioDAO();
     private CategoriaDAO categoriaDAO = new CategoriaDAO();
     
-    private Usuario usuario;
     private Stage stage;
     
     private TableView<Livro> livrosTable;
     private TableView<Usuario> usuariosTable;
     private TableView<Emprestimo> filaEsperaTable;
+    private TableView<Emprestimo> emprestimosTable;
     private Label usuarioLabel;
     private Button sairBtn;
 
     public AdminView(Stage stage, Usuario usuario) {
         this.stage = stage;
-        this.usuario = usuario;
         setPadding(new Insets(10));
         
         // TOPO: Info do usuário e logout
@@ -39,9 +38,9 @@ public class AdminView extends BorderPane {
         topoInfo.setAlignment(Pos.CENTER_LEFT);
         usuarioLabel = new Label("Admin: " + usuario.getNomeCompleto());
         usuarioLabel.setStyle("-fx-font-size: 14; -fx-font-weight: bold;");
-        sairBtn = new Button("Sair");
+        sairBtn = new Button("Terminar Sessão");
         sairBtn.setStyle("-fx-font-size: 12;");
-        sairBtn.setOnAction(e -> handleSair());
+        sairBtn.setOnAction(e -> handleTerminarSessao());
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         topoInfo.getChildren().addAll(usuarioLabel, spacer, sairBtn);
@@ -63,11 +62,15 @@ public class AdminView extends BorderPane {
         Tab tabFila = new Tab("Fila de Espera");
         tabFila.setContent(criarTabFila());
         
-        // TAB 4: RELATÓRIOS
+        // TAB 4: GERENCIAR EMPRÉSTIMOS
+        Tab tabEmprestimos = new Tab("Gerenciar Empréstimos");
+        tabEmprestimos.setContent(criarTabEmprestimos());
+        
+        // TAB 5: RELATÓRIOS
         Tab tabRelatorios = new Tab("Relatórios");
         tabRelatorios.setContent(criarTabRelatorios());
         
-        tabPane.getTabs().addAll(tabLivros, tabUsuarios, tabFila, tabRelatorios);
+        tabPane.getTabs().addAll(tabLivros, tabUsuarios, tabFila, tabEmprestimos, tabRelatorios);
         setCenter(tabPane);
     }
 
@@ -190,6 +193,44 @@ public class AdminView extends BorderPane {
         return box;
     }
 
+    private VBox criarTabEmprestimos() {
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(10));
+        
+        emprestimosTable = new TableView<>();
+        emprestimosTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        
+        TableColumn<Emprestimo, Integer> colId = new TableColumn<>("ID");
+        colId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        
+        TableColumn<Emprestimo, Integer> colUsuarioId = new TableColumn<>("UsuárioID");
+        colUsuarioId.setCellValueFactory(new PropertyValueFactory<>("usuarioId"));
+        
+        TableColumn<Emprestimo, Integer> colLivroId = new TableColumn<>("LivroID");
+        colLivroId.setCellValueFactory(new PropertyValueFactory<>("livroId"));
+        
+        TableColumn<Emprestimo, String> colStatus = new TableColumn<>("Status");
+        colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+        
+        TableColumn<Emprestimo, LocalDate> colDataEmp = new TableColumn<>("Data Empréstimo");
+        colDataEmp.setCellValueFactory(new PropertyValueFactory<>("dataEmprestimo"));
+        
+        TableColumn<Emprestimo, LocalDate> colDataDev = new TableColumn<>("Data Devolução Prevista");
+        colDataDev.setCellValueFactory(new PropertyValueFactory<>("dataDevolucaoPrevista"));
+        
+        emprestimosTable.getColumns().addAll(colId, colUsuarioId, colLivroId, colStatus, colDataEmp, colDataDev);
+        
+        HBox acoes = new HBox(10);
+        acoes.setAlignment(Pos.CENTER_LEFT);
+        Button atualizarBtn = new Button("Atualizar");
+        atualizarBtn.setOnAction(e -> atualizarEmprestimos());
+        acoes.getChildren().addAll(atualizarBtn);
+        
+        box.getChildren().addAll(emprestimosTable, acoes);
+        atualizarEmprestimos();
+        return box;
+    }
+
     private VBox criarTabRelatorios() {
         VBox box = new VBox(10);
         box.setPadding(new Insets(10));
@@ -255,6 +296,12 @@ public class AdminView extends BorderPane {
         filaEsperaTable.setItems(obs);
     }
 
+    private void atualizarEmprestimos() {
+        List<Emprestimo> emprestimos = emprestimoDAO.getTodosEmprestimos();
+        ObservableList<Emprestimo> obs = FXCollections.observableArrayList(emprestimos);
+        emprestimosTable.setItems(obs);
+    }
+
     private void handleAdicionarLivro() {
         showFormularioLivro(null);
     }
@@ -287,7 +334,7 @@ public class AdminView extends BorderPane {
     }
 
     private void showFormularioLivro(Livro livro) {
-        Dialog<Livro> dialog = new Dialog<>();
+        Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(livro == null ? "Adicionar Livro" : "Editar Livro");
         
         GridPane grid = new GridPane();
@@ -400,7 +447,7 @@ public class AdminView extends BorderPane {
     }
 
     private void showFormularioUsuario(Usuario usuario) {
-        Dialog<Usuario> dialog = new Dialog<>();
+        Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(usuario == null ? "Adicionar Usuário" : "Editar Usuário");
         
         GridPane grid = new GridPane();
@@ -471,13 +518,13 @@ public class AdminView extends BorderPane {
             } catch (Exception e) {
                 showAlert(Alert.AlertType.ERROR, "Erro: " + e.getMessage());
             }
-        });
+        }
     }
 
-    private void handleSair() {
+    private void handleTerminarSessao() {
         Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
         confirmacao.setTitle("Confirmar Saída");
-        confirmacao.setContentText("Deseja sair?");
+        confirmacao.setContentText("Deseja terminar a sessão?");
         if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
             stage.close();
         }
