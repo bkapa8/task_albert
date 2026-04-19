@@ -57,7 +57,7 @@ public class LoginView extends BorderPane {
         Usuario user = dao.login(username, password);
         if (user == null) {
             feedbackLabel.setText("Usuário ou senha inválidos.");
-            showAlert(Alert.AlertType.ERROR, "Login falhou", "Usuário ou senha inválidos.");
+            // showAlert(Alert.AlertType.ERROR, "Login falhou", "Usuário ou senha inválidos.");
         } else {
             feedbackLabel.setText("");
             if ("ADMIN".equals(user.getRole())) {
@@ -71,6 +71,12 @@ public class LoginView extends BorderPane {
                 funcStage.setTitle("BibliotecaUOR - Funcionário");
                 funcStage.setScene(new Scene(new FuncionarioView(funcStage, user), 1000, 650));
                 funcStage.show();
+                primaryStage.close();
+            } else if ("LEITOR".equals(user.getRole())) {
+                Stage leitorStage = new Stage();
+                leitorStage.setTitle("BibliotecaUOR - Leitor");
+                leitorStage.setScene(new Scene(new LeitorView(leitorStage, user), 1000, 650));
+                leitorStage.show();
                 primaryStage.close();
             }
         }

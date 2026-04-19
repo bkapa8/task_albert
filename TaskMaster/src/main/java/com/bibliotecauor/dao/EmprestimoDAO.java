@@ -16,6 +16,9 @@ public class EmprestimoDAO {
         return DriverManager.getConnection(URL, USER, PASS);
     }
 
+    /**
+     * Retorna Usuario se login válido. role pode ser "ADMIN", "FUNCIONARIO" ou "LEITOR".
+     */
     public Usuario login(String username, String password) {
         String sql = "SELECT * FROM usuarios WHERE username = ? AND password = ?";
         try (Connection conn = getConnection();
@@ -24,12 +27,14 @@ public class EmprestimoDAO {
             ps.setString(2, password);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
+                String role = rs.getString("role");
+                // role pode ser ADMIN, FUNCIONARIO ou LEITOR
                 return new Usuario(
                     rs.getInt("id"),
                     rs.getString("username"),
                     rs.getString("password"),
                     rs.getString("nomeCompleto"),
-                    rs.getString("role")
+                    role
                 );
             }
         } catch (SQLException e) {
@@ -80,7 +85,10 @@ public class EmprestimoDAO {
                         undoStack.push(e);
                     }
                 }
-                // Atualiza quantidade e disponibilidade
+                
+                
+                
+                
                 String updateLivro = "UPDATE livros SET quantidade = quantidade - 1, disponivel = IF(quantidade-1>0, TRUE, FALSE) WHERE id = ?";
                 try (PreparedStatement ps2 = conn.prepareStatement(updateLivro)) {
                     ps2.setInt(1, e.getLivroId());
@@ -224,6 +232,8 @@ public class EmprestimoDAO {
     public boolean undoUltimaAcao() {
         if (undoStack.isEmpty()) return false;
         Emprestimo e = undoStack.pop();
+        
+        
         // Exemplo: desfaz apenas empréstimo inserido
         String sql = "DELETE FROM emprestimos WHERE id = ?";
         try (Connection conn = getConnection();
@@ -231,6 +241,8 @@ public class EmprestimoDAO {
             ps.setInt(1, e.getId());
             int affected = ps.executeUpdate();
             if (affected > 0) {
+                
+                
                 // Reverte quantidade do livro
                 String updateLivro = "UPDATE livros SET quantidade = quantidade + 1, disponivel = TRUE WHERE id = ?";
                 try (PreparedStatement ps2 = conn.prepareStatement(updateLivro)) {

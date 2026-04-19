@@ -38,6 +38,9 @@ public class AdminView extends BorderPane {
         Button editLivroBtn = new Button("Editar Livro");
         livrosBox.getChildren().addAll(livrosTable, addLivroBtn, editLivroBtn);
         tab1.setContent(livrosBox);
+        
+        
+        
         // Tab 2: Utilizadores
         Tab tab2 = new Tab("Utilizadores");
         VBox usersBox = new VBox(10);
@@ -57,6 +60,15 @@ public class AdminView extends BorderPane {
         Button editUserBtn = new Button("Editar Usuário");
         usersBox.getChildren().addAll(usersTable, addUserBtn, editUserBtn);
         tab2.setContent(usersBox);
+        
+        
+        
+        
+        
+        
+        
+        
+        
         // Tab 3: Relatórios Gerais
         Tab tab3 = new Tab("Relatórios Gerais");
         VBox relatorioBox = new VBox(10);
@@ -72,10 +84,12 @@ public class AdminView extends BorderPane {
         tab3.setContent(relatorioBox);
         tabPane.getTabs().addAll(tab1, tab2, tab3);
         setCenter(tabPane);
+        
+        
         // Inicialização
         atualizarLivros(livrosTable);
         atualizarUsuarios(usersTable);
-        // Handlers básicos (exemplo)
+        
         gerarRelatorioBtn.setOnAction(e -> {
             String cat = relatorioCombo.getValue();
             StringBuilder sb = new StringBuilder();

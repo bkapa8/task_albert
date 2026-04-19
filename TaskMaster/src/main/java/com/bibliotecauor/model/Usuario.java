@@ -1,11 +1,17 @@
 package com.bibliotecauor.model;
 
+/**
+ * role pode ser "ADMIN", "FUNCIONARIO" ou "LEITOR".
+ */
 public class Usuario {
     private int id;
     private String username;
     private String password;
     private String nomeCompleto;
-    private String role; // "ADMIN" ou "FUNCIONARIO"
+    /**
+     * "ADMIN", "FUNCIONARIO" ou "LEITOR"
+     */
+    private String role; 
 
     public Usuario() {}
 
