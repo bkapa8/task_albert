@@ -19,7 +19,7 @@ src/main/resources/application.properties
 src/main/resources/application.yml
 src/test/
 
-*.sql
+# *.sql
 *.pdf
 docs
-bancodedados
+# bancodedados
