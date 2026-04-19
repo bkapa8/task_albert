@@ -63,7 +63,7 @@ public class LoginView extends BorderPane {
             if ("ADMIN".equals(user.getRole())) {
                 Stage adminStage = new Stage();
                 adminStage.setTitle("BibliotecaUOR - Admin");
-                adminStage.setScene(new Scene(new AdminView(adminStage), 900, 600));
+                adminStage.setScene(new Scene(new AdminView(adminStage, user), 900, 600));
                 adminStage.show();
                 primaryStage.close();
             } else if ("FUNCIONARIO".equals(user.getRole())) {

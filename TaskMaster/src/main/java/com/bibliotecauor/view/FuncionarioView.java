@@ -247,7 +247,7 @@ public class FuncionarioView extends BorderPane {
         confirmacao.setTitle("Confirmar Exclusão");
         confirmacao.setHeaderText(null);
         confirmacao.setContentText("Tem certeza que deseja deletar este livro?");
-        if (confirmacao.showAndWait().orElse(Alert.AlertType.CANCEL) == Alert.AlertType.OK) {
+        if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
             if (livroDAO.deletarLivro(selecionado.getId())) {
                 showAlert(Alert.AlertType.INFORMATION, "Livro deletado com sucesso!");
                 atualizarLivros();
@@ -335,7 +335,7 @@ public class FuncionarioView extends BorderPane {
         confirmacao.setTitle("Confirmar Saída");
         confirmacao.setHeaderText(null);
         confirmacao.setContentText("Deseja sair?");
-        if (confirmacao.showAndWait().orElse(Alert.AlertType.CANCEL) == Alert.AlertType.OK) {
+        if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
             stage.close();
         }
     }

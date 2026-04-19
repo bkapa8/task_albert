@@ -276,8 +276,8 @@ public class AdminView extends BorderPane {
         
         Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
         confirmacao.setTitle("Confirmar Exclusão");
-        confirmacao.setContentText("Deseja deletar este livro?");
-        if (confirmacao.showAndWait().orElse(Alert.AlertType.CANCEL) == Alert.AlertType.OK) {
+        confirmacao.setContentText("Deseja deletar esta reserva?");
+        if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
             if (livroDAO.deletarLivro(selecionado.getId())) {
                 showAlert(Alert.AlertType.INFORMATION, "Livro deletado!");
                 atualizarLivros();
@@ -376,7 +376,7 @@ public class AdminView extends BorderPane {
         Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
         confirmacao.setTitle("Confirmar Exclusão");
         confirmacao.setContentText("Deseja deletar este usuário?");
-        if (confirmacao.showAndWait().orElse(Alert.AlertType.CANCEL) == Alert.AlertType.OK) {
+        if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
             if (usuarioDAO.deletarUsuario(selecionado.getId())) {
                 showAlert(Alert.AlertType.INFORMATION, "Usuário deletado!");
                 atualizarUsuarios();

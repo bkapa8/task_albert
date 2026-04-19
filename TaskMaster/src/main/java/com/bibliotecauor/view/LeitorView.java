@@ -7,6 +7,7 @@ import com.bibliotecauor.model.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -65,7 +66,9 @@ public class LeitorView extends BorderPane {
         pesquisarBtn = new Button("Pesquisar");
         pesquisarBtn.setOnAction(e -> handlePesquisa());
         
-        buscaBox.getChildren().addAll(categLabel, categoriaCombo, new Separator(Separator.VERTICAL), 
+        Separator separador = new Separator();
+        separador.setOrientation(javafx.geometry.Orientation.VERTICAL);
+        buscaBox.getChildren().addAll(categLabel, categoriaCombo, separador, 
                                        pesqLabel, pesquisaField, pesquisarBtn);
         
         VBox topoCompleto = new VBox(10, topoInfo, buscaBox);
