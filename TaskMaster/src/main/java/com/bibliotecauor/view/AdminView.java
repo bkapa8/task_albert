@@ -12,6 +12,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public class AdminView extends BorderPane {
     private EmprestimoDAO emprestimoDAO = new EmprestimoDAO();
@@ -327,7 +328,8 @@ public class AdminView extends BorderPane {
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
         
-        dialog.showAndWait().ifPresent(result -> {
+        Optional<ButtonType> resultado = dialog.showAndWait();
+        if (resultado.isPresent() && resultado.get() == ButtonType.OK) {
             try {
                 if (isbnField.getText().isEmpty() || tituloField.getText().isEmpty() || 
                     autorField.getText().isEmpty() || categoriaCombo.getValue() == null || 
@@ -363,7 +365,7 @@ public class AdminView extends BorderPane {
             } catch (Exception e) {
                 showAlert(Alert.AlertType.ERROR, "Erro: " + e.getMessage());
             }
-        });
+        }
     }
 
     private void handleAdicionarUsuario() {
@@ -435,7 +437,8 @@ public class AdminView extends BorderPane {
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
         
-        dialog.showAndWait().ifPresent(result -> {
+        Optional<ButtonType> resultado = dialog.showAndWait();
+        if (resultado.isPresent() && resultado.get() == ButtonType.OK) {
             try {
                 if (usernameField.getText().isEmpty() || passwordField.getText().isEmpty() || 
                     nomeField.getText().isEmpty() || roleCombo.getValue() == null) {

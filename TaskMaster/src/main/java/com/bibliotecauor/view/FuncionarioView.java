@@ -163,7 +163,7 @@ public class FuncionarioView extends BorderPane {
 
     private void atualizarEmprestimos() {
         // Carrega apenas empréstimos com status PENDENTE ou RESERVADO
-        List<Emprestimo> emprestimos = emprestimoDAO.getHistoricoEmprestimos(0); // 0 = todos
+        List<Emprestimo> emprestimos = emprestimoDAO.getTodosEmprestimos();
         ObservableList<Emprestimo> filtrados = FXCollections.observableArrayList();
         for (Emprestimo e : emprestimos) {
             if ("PENDENTE".equals(e.getStatus()) || "RESERVADO".equals(e.getStatus())) {

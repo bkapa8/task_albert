@@ -257,4 +257,32 @@ public class EmprestimoDAO {
         }
         return false;
     }
+
+    /**
+     * Obter todos os empréstimos e reservas
+     */
+    public List<Emprestimo> getTodosEmprestimos() {
+        List<Emprestimo> emprestimos = new LinkedList<>();
+        String sql = "SELECT * FROM emprestimos ORDER BY data_emprestimo DESC";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Emprestimo e = new Emprestimo(
+                    rs.getInt("id"),
+                    rs.getInt("usuario_id"),
+                    rs.getInt("livro_id"),
+                    rs.getDate("data_emprestimo").toLocalDate(),
+                    rs.getDate("data_devolucao_prevista").toLocalDate(),
+                    rs.getDate("data_devolucao_real") != null ? rs.getDate("data_devolucao_real").toLocalDate() : null,
+                    rs.getString("status"),
+                    rs.getInt("prioridade")
+                );
+                emprestimos.add(e);
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return emprestimos;
+    }
 }
