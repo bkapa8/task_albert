@@ -448,7 +448,7 @@ public class AdminView extends BorderPane {
         Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
         confirmacao.setTitle("Confirmar Saída");
         confirmacao.setContentText("Deseja sair?");
-        if (confirmacao.showAndWait().orElse(Alert.AlertType.CANCEL) == Alert.AlertType.OK) {
+        if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
             stage.close();
         }
     }

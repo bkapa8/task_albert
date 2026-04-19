@@ -302,7 +302,7 @@ public class LeitorView extends BorderPane {
         confirmacao.setTitle("Confirmar Saída");
         confirmacao.setHeaderText(null);
         confirmacao.setContentText("Deseja sair?");
-        if (confirmacao.showAndWait().orElse(Alert.AlertType.CANCEL) == Alert.AlertType.OK) {
+        if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
             stage.close();
         }
     }
