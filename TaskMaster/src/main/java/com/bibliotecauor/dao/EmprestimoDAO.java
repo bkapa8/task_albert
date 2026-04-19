@@ -69,15 +69,29 @@ public class EmprestimoDAO {
     }
 
     public boolean adicionarEmprestimo(Emprestimo e) {
-        String sql = "INSERT INTO emprestimos (usuario_id, livro_id, data_emprestimo, data_devolucao_prevista, status, prioridade) VALUES (?, ?, ?, ?, ?, ?)";
+        // Verifica se livro está disponível e tem quantidade > 0
+        String checkSql = "SELECT quantidade FROM livros WHERE id = ? AND disponivel = TRUE AND quantidade > 0";
+        try (Connection conn = getConnection();
+             PreparedStatement psCheck = conn.prepareStatement(checkSql)) {
+            psCheck.setInt(1, e.getLivroId());
+            try (ResultSet rs = psCheck.executeQuery()) {
+                if (!rs.next()) {
+                    return false; // Livro não está disponível
+                }
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            return false;
+        }
+
+        String sql = "INSERT INTO emprestimos (usuario_id, livro_id, data_emprestimo, data_devolucao_prevista, status, prioridade) VALUES (?, ?, ?, ?, 'pendente', ?)";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, e.getUsuarioId());
             ps.setInt(2, e.getLivroId());
             ps.setDate(3, java.sql.Date.valueOf(e.getDataEmprestimo()));
             ps.setDate(4, java.sql.Date.valueOf(e.getDataDevolucaoPrevista()));
-            ps.setString(5, e.getStatus());
-            ps.setInt(6, e.getPrioridade());
+            ps.setInt(5, e.getPrioridade());
             int affected = ps.executeUpdate();
             if (affected > 0) {
                 try (ResultSet keys = ps.getGeneratedKeys()) {
@@ -85,15 +99,6 @@ public class EmprestimoDAO {
                         e.setId(keys.getInt(1));
                         undoStack.push(e);
                     }
-                }
-                
-                
-                
-                
-                String updateLivro = "UPDATE livros SET quantidade = quantidade - 1, disponivel = IF(quantidade-1>0, TRUE, FALSE) WHERE id = ?";
-                try (PreparedStatement ps2 = conn.prepareStatement(updateLivro)) {
-                    ps2.setInt(1, e.getLivroId());
-                    ps2.executeUpdate();
                 }
                 return true;
             }
@@ -103,15 +108,15 @@ public class EmprestimoDAO {
         return false;
     }
 
-    public boolean devolverLivro(int emprestimoId) {
-        String sql = "UPDATE emprestimos SET data_devolucao_real = CURDATE(), status = 'DEVOLVIDO' WHERE id = ?";
+    public boolean aprovarEmprestimo(int emprestimoId) {
+        String sql = "UPDATE emprestimos SET status = 'ativo' WHERE id = ? AND status = 'pendente'";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, emprestimoId);
             int affected = ps.executeUpdate();
             if (affected > 0) {
-                // Atualiza quantidade e disponibilidade do livro
-                String updateLivro = "UPDATE livros l JOIN emprestimos e ON l.id = e.livro_id SET l.quantidade = l.quantidade + 1, l.disponivel = TRUE WHERE e.id = ?";
+                // Reduz quantidade do livro
+                String updateLivro = "UPDATE livros SET quantidade = quantidade - 1, disponivel = IF(quantidade-1>0, TRUE, FALSE) WHERE id = (SELECT livro_id FROM emprestimos WHERE id = ?)";
                 try (PreparedStatement ps2 = conn.prepareStatement(updateLivro)) {
                     ps2.setInt(1, emprestimoId);
                     ps2.executeUpdate();
@@ -124,13 +129,34 @@ public class EmprestimoDAO {
         return false;
     }
 
-    public boolean reservarLivro(int livroId, int usuarioId) {
-        // Reserva: status = 'RESERVADO', prioridade = 1 (alta)
-        String sql = "INSERT INTO emprestimos (usuario_id, livro_id, data_emprestimo, data_devolucao_prevista, status, prioridade) VALUES (?, ?, CURDATE(), CURDATE(), 'RESERVADO', 1)";
+    public boolean devolverLivro(int emprestimoId) {
+        String sql = "UPDATE emprestimos SET data_devolucao_real = CURDATE(), status = 'concluido' WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, emprestimoId);
+            int affected = ps.executeUpdate();
+            if (affected > 0) {
+                // Incrementa quantidade do livro
+                String updateLivro = "UPDATE livros SET quantidade = quantidade + 1, disponivel = TRUE WHERE id = (SELECT livro_id FROM emprestimos WHERE id = ?)";
+                try (PreparedStatement ps2 = conn.prepareStatement(updateLivro)) {
+                    ps2.setInt(1, emprestimoId);
+                    ps2.executeUpdate();
+                }
+                return true;
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean reservarLivro(int livroId, int usuarioId, LocalDate dataPrevista) {
+        String sql = "INSERT INTO emprestimos (usuario_id, livro_id, data_emprestimo, data_devolucao_prevista, status, prioridade) VALUES (?, ?, CURDATE(), ?, 'reservado', 1)";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, usuarioId);
             ps.setInt(2, livroId);
+            ps.setDate(3, java.sql.Date.valueOf(dataPrevista));
             int affected = ps.executeUpdate();
             if (affected > 0) {
                 try (ResultSet keys = ps.getGeneratedKeys()) {
@@ -140,8 +166,8 @@ public class EmprestimoDAO {
                         e.setUsuarioId(usuarioId);
                         e.setLivroId(livroId);
                         e.setDataEmprestimo(LocalDate.now());
-                        e.setDataDevolucaoPrevista(LocalDate.now());
-                        e.setStatus("RESERVADO");
+                        e.setDataDevolucaoPrevista(dataPrevista);
+                        e.setStatus("reservado");
                         e.setPrioridade(1);
                         undoStack.push(e);
                     }
