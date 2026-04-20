@@ -3,6 +3,7 @@ package com.bibliotecauor.view;
 import com.bibliotecauor.dao.EmprestimoDAO;
 import com.bibliotecauor.dao.LivroDAO;
 import com.bibliotecauor.dao.CategoriaDAO;
+import com.bibliotecauor.dao.UsuarioDAO;
 import com.bibliotecauor.model.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -87,6 +88,10 @@ public class FuncionarioView extends BorderPane {
         HBox acoesEmprestimos = new HBox(10);
         acoesEmprestimos.setAlignment(Pos.CENTER_LEFT);
         
+        Button adicionarBtn = new Button("Adicionar");
+        adicionarBtn.setStyle("-fx-font-size: 12; -fx-padding: 8;");
+        adicionarBtn.setOnAction(e -> handleAdicionarEmprestimo());
+        
         aprovarBtn = new Button("Aprovar");
         aprovarBtn.setStyle("-fx-font-size: 12; -fx-padding: 8;");
         aprovarBtn.setOnAction(e -> handleAproviarEmprestimo());
@@ -95,11 +100,19 @@ public class FuncionarioView extends BorderPane {
         negarBtn.setStyle("-fx-font-size: 12; -fx-padding: 8;");
         negarBtn.setOnAction(e -> handleNegarEmprestimo());
         
+        Button editarBtn = new Button("Editar");
+        editarBtn.setStyle("-fx-font-size: 12; -fx-padding: 8;");
+        editarBtn.setOnAction(e -> handleEditarEmprestimo());
+        
+        Button deletarBtn = new Button("Deletar");
+        deletarBtn.setStyle("-fx-font-size: 12; -fx-padding: 8;");
+        deletarBtn.setOnAction(e -> handleDeletarEmprestimo());
+        
         atualizarBtn = new Button("Atualizar");
         atualizarBtn.setStyle("-fx-font-size: 12; -fx-padding: 8;");
         atualizarBtn.setOnAction(e -> atualizarEmprestimos());
         
-        acoesEmprestimos.getChildren().addAll(aprovarBtn, negarBtn, atualizarBtn);
+        acoesEmprestimos.getChildren().addAll(adicionarBtn, aprovarBtn, negarBtn, editarBtn, deletarBtn, atualizarBtn);
         
         emprestimosBox.getChildren().addAll(infoLabel, emprestimosTable, acoesEmprestimos);
         tabEmprestimos.setContent(emprestimosBox);
@@ -222,6 +235,172 @@ public class FuncionarioView extends BorderPane {
             }
         } catch (java.sql.SQLException e) {
             showAlert(Alert.AlertType.ERROR, "Erro ao negar empréstimo: " + e.getMessage());
+        }
+    }
+
+    private void handleAdicionarEmprestimo() {
+        showFormularioEmprestimo(null);
+    }
+
+    private void handleEditarEmprestimo() {
+        Emprestimo selecionado = emprestimosTable.getSelectionModel().getSelectedItem();
+        if (selecionado == null) {
+            showAlert(Alert.AlertType.WARNING, "Selecione um empréstimo para editar.");
+            return;
+        }
+        showFormularioEmprestimo(selecionado);
+    }
+
+    private void handleDeletarEmprestimo() {
+        Emprestimo selecionado = emprestimosTable.getSelectionModel().getSelectedItem();
+        if (selecionado == null) {
+            showAlert(Alert.AlertType.WARNING, "Selecione um empréstimo para deletar.");
+            return;
+        }
+        
+        Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmacao.setTitle("Confirmar Exclusão");
+        confirmacao.setContentText("Deseja deletar este empréstimo?");
+        if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+            if (emprestimoDAO.deletarEmprestimo(selecionado.getId())) {
+                showAlert(Alert.AlertType.INFORMATION, "Empréstimo deletado!");
+                atualizarEmprestimos();
+            } else {
+                showAlert(Alert.AlertType.ERROR, "Erro ao deletar empréstimo!");
+            }
+        }
+    }
+
+    private void showFormularioEmprestimo(Emprestimo emprestimo) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(emprestimo == null ? "Adicionar Empréstimo" : "Editar Empréstimo");
+        
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20));
+        
+        ComboBox<Usuario> usuarioCombo = new ComboBox<>();
+        List<Usuario> usuarios = new UsuarioDAO().getTodosUsuarios();
+        usuarioCombo.setItems(FXCollections.observableArrayList(usuarios));
+        usuarioCombo.setConverter(new javafx.util.StringConverter<Usuario>() {
+            @Override
+            public String toString(Usuario u) {
+                return u != null ? u.getNomeCompleto() + " (ID: " + u.getId() + ")" : "";
+            }
+            @Override
+            public Usuario fromString(String s) {
+                return null;
+            }
+        });
+        
+        ComboBox<Livro> livroCombo = new ComboBox<>();
+        List<Livro> livros = new LivroDAO().getTodosLivros();
+        livroCombo.setItems(FXCollections.observableArrayList(livros));
+        livroCombo.setConverter(new javafx.util.StringConverter<Livro>() {
+            @Override
+            public String toString(Livro l) {
+                return l != null ? l.getTitulo() + " (ID: " + l.getId() + ")" : "";
+            }
+            @Override
+            public Livro fromString(String s) {
+                return null;
+            }
+        });
+        
+        DatePicker dataEmpPicker = new DatePicker();
+        dataEmpPicker.setValue(LocalDate.now());
+        
+        DatePicker dataDevolPicker = new DatePicker();
+        dataDevolPicker.setValue(LocalDate.now().plusDays(14));
+        
+        DatePicker dataRealPicker = new DatePicker();
+        
+        ComboBox<String> statusCombo = new ComboBox<>();
+        statusCombo.getItems().addAll("PENDENTE", "RESERVADO", "ATIVO", "DEVOLVIDO");
+        
+        javafx.scene.control.Spinner<Integer> prioridadeSpinner = new javafx.scene.control.Spinner<>(0, 10, 0);
+        
+        if (emprestimo != null) {
+            // Pré-preencher dados
+            for (Usuario u : usuarios) {
+                if (u.getId() == emprestimo.getUsuarioId()) {
+                    usuarioCombo.setValue(u);
+                    break;
+                }
+            }
+            for (Livro l : livros) {
+                if (l.getId() == emprestimo.getLivroId()) {
+                    livroCombo.setValue(l);
+                    break;
+                }
+            }
+            dataEmpPicker.setValue(emprestimo.getDataEmprestimo());
+            dataDevolPicker.setValue(emprestimo.getDataDevolucaoPrevista());
+            if (emprestimo.getDataDevolucaoReal() != null) {
+                dataRealPicker.setValue(emprestimo.getDataDevolucaoReal());
+            }
+            statusCombo.setValue(emprestimo.getStatus());
+            prioridadeSpinner.getValueFactory().setValue(emprestimo.getPrioridade());
+        }
+        
+        grid.add(new Label("Utilizador:"), 0, 0);
+        grid.add(usuarioCombo, 1, 0);
+        grid.add(new Label("Livro:"), 0, 1);
+        grid.add(livroCombo, 1, 1);
+        grid.add(new Label("Data Empréstimo:"), 0, 2);
+        grid.add(dataEmpPicker, 1, 2);
+        grid.add(new Label("Data Devolução Prevista:"), 0, 3);
+        grid.add(dataDevolPicker, 1, 3);
+        grid.add(new Label("Data Devolução Real:"), 0, 4);
+        grid.add(dataRealPicker, 1, 4);
+        grid.add(new Label("Status:"), 0, 5);
+        grid.add(statusCombo, 1, 5);
+        grid.add(new Label("Prioridade:"), 0, 6);
+        grid.add(prioridadeSpinner, 1, 6);
+        
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        
+        Optional<ButtonType> resultado = dialog.showAndWait();
+        if (resultado.isPresent() && resultado.get() == ButtonType.OK) {
+            try {
+                if (usuarioCombo.getValue() == null || livroCombo.getValue() == null || 
+                    statusCombo.getValue() == null) {
+                    showAlert(Alert.AlertType.WARNING, "Campos obrigatórios não preenchidos!");
+                    return;
+                }
+                
+                Emprestimo novoEmprestimo = new Emprestimo();
+                novoEmprestimo.setUsuarioId(usuarioCombo.getValue().getId());
+                novoEmprestimo.setLivroId(livroCombo.getValue().getId());
+                novoEmprestimo.setDataEmprestimo(dataEmpPicker.getValue());
+                novoEmprestimo.setDataDevolucaoPrevista(dataDevolPicker.getValue());
+                if (dataRealPicker.getValue() != null) {
+                    novoEmprestimo.setDataDevolucaoReal(dataRealPicker.getValue());
+                }
+                novoEmprestimo.setStatus(statusCombo.getValue());
+                novoEmprestimo.setPrioridade(prioridadeSpinner.getValue());
+                
+                if (emprestimo != null) {
+                    novoEmprestimo.setId(emprestimo.getId());
+                    if (emprestimoDAO.editarEmprestimo(novoEmprestimo)) {
+                        showAlert(Alert.AlertType.INFORMATION, "Empréstimo editado!");
+                        atualizarEmprestimos();
+                    } else {
+                        showAlert(Alert.AlertType.ERROR, "Erro ao editar empréstimo!");
+                    }
+                } else {
+                    if (emprestimoDAO.adicionarEmprestimo(novoEmprestimo)) {
+                        showAlert(Alert.AlertType.INFORMATION, "Empréstimo adicionado!");
+                        atualizarEmprestimos();
+                    } else {
+                        showAlert(Alert.AlertType.ERROR, "Erro ao adicionar empréstimo!");
+                    }
+                }
+            } catch (Exception e) {
+                showAlert(Alert.AlertType.ERROR, "Erro: " + e.getMessage());
+            }
         }
     }
 

@@ -285,4 +285,79 @@ public class EmprestimoDAO {
         }
         return emprestimos;
     }
+
+    /**
+     * Editar um empréstimo existente
+     */
+    public boolean editarEmprestimo(Emprestimo e) {
+        String sql = "UPDATE emprestimos SET usuario_id = ?, livro_id = ?, data_emprestimo = ?, data_devolucao_prevista = ?, data_devolucao_real = ?, status = ?, prioridade = ? WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, e.getUsuarioId());
+            ps.setInt(2, e.getLivroId());
+            ps.setDate(3, java.sql.Date.valueOf(e.getDataEmprestimo()));
+            ps.setDate(4, java.sql.Date.valueOf(e.getDataDevolucaoPrevista()));
+            ps.setDate(5, e.getDataDevolucaoReal() != null ? java.sql.Date.valueOf(e.getDataDevolucaoReal()) : null);
+            ps.setString(6, e.getStatus());
+            ps.setInt(7, e.getPrioridade());
+            ps.setInt(8, e.getId());
+            int affected = ps.executeUpdate();
+            return affected > 0;
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return false;
+    }
+
+    /**
+     * Deletar um empréstimo
+     */
+    public boolean deletarEmprestimo(int emprestimoId) {
+        String sql = "DELETE FROM emprestimos WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, emprestimoId);
+            int affected = ps.executeUpdate();
+            if (affected > 0) {
+                // Reverte quantidade do livro se era um empréstimo ativo
+                String updateLivro = "UPDATE livros SET quantidade = quantidade + 1, disponivel = TRUE WHERE id = (SELECT livro_id FROM emprestimos WHERE id = ?)";
+                try (PreparedStatement ps2 = conn.prepareStatement(updateLivro)) {
+                    ps2.setInt(1, emprestimoId);
+                    ps2.executeUpdate();
+                }
+                return true;
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return false;
+    }
+
+    /**
+     * Obter empréstimo por ID
+     */
+    public Emprestimo getEmprestimoById(int id) {
+        String sql = "SELECT * FROM emprestimos WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new Emprestimo(
+                        rs.getInt("id"),
+                        rs.getInt("usuario_id"),
+                        rs.getInt("livro_id"),
+                        rs.getDate("data_emprestimo").toLocalDate(),
+                        rs.getDate("data_devolucao_prevista").toLocalDate(),
+                        rs.getDate("data_devolucao_real") != null ? rs.getDate("data_devolucao_real").toLocalDate() : null,
+                        rs.getString("status"),
+                        rs.getInt("prioridade")
+                    );
+                }
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return null;
+    }
 }
