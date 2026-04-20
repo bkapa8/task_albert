@@ -9,6 +9,7 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
@@ -296,13 +297,18 @@ public class LeitorView extends BorderPane {
             showAlert(Alert.AlertType.ERROR, "Erro ao devolver livro.");
         }
     }
-
     private void handleTerminarSessao() {
         Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
         confirmacao.setTitle("Confirmar Saída");
         confirmacao.setHeaderText(null);
         confirmacao.setContentText("Deseja terminar a sessão?");
         if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+            // Criar nova Stage com LoginView
+            Stage loginStage = new Stage();
+            loginStage.setTitle("Biblioteca UOR - Login");
+            loginStage.setScene(new Scene(new LoginView(loginStage), 400, 300));
+            loginStage.show();
+            // Fechar apenas a Stage atual
             stage.close();
         }
     }

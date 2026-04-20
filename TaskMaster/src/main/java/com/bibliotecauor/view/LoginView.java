@@ -87,6 +87,8 @@ public class LoginView extends BorderPane {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(msg);
+
+        
         alert.showAndWait();
     }
 }
